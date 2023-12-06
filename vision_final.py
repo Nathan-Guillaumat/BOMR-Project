@@ -26,34 +26,51 @@ def locate_goal(frame):
         return None
 
 def locate_thymio(frame):
+
     # Convert the frame from BGR to HSV color space
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-    # gaussian blur
-    # hsv = cv2.GaussianBlur(hsv, (15, 15), 10)
+
     # Define the lower and upper bounds for the red color in HSV
-    lower_red = np.array([0, 70, 50])
-    upper_red = np.array([10, 255, 255])
+    lower_red1 = np.array([0, 70, 50])
+    upper_red1 = np.array([10, 255, 255])
+
+    lower_red2 = np.array([170, 70, 50])
+    upper_red2 = np.array([180, 255, 255])
+
     # Threshold the image to get only red colors
-    mask = cv2.inRange(hsv, lower_red, upper_red)
+    mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
+    mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
+
+    # Combine the two masks
+    mask = cv2.bitwise_or(mask1, mask2)
     # Find contours in the binary image
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
     # Check if any contours are found
     if contours:
         # Sort contours by area
         sorted_contours = sorted(contours, key=cv2.contourArea, reverse=True)
+
         # The largest contour is the back dot and the second largest is the front dot
         back_dot = sorted_contours[0]
         front_dot = sorted_contours[1]
+
         # Calculate the centers of the two dots
         back_center = np.mean(back_dot, axis=0)
         front_center = np.mean(front_dot, axis=0)
+
         # The orientation of the robot is the angle of the line connecting the two centers relative to the x-axis
         dx = front_center[0][0] - back_center[0][0]
         dy = front_center[0][1] - back_center[0][1]  
         orientation = np.arctan2(dy, dx)
-        return back_center, orientation
+        # print(front_center[0][0],back_center[0][0])
+        # print(front_center[0][1],back_center[0][1])
+        # print(dx, dy)
+
+
+        return back_center, front_center, orientation, sorted_contours
     else:
-        return None
+        return [0,0], 0
 
 
 def locate_table_origin(frame):
@@ -69,7 +86,6 @@ def locate_table_origin(frame):
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     # Check if any contours are found
     if contours:
-        print("contours found for table:", len(contours))
         # Find the contour with the maximum area (largest white object)
         max_contour = max(contours, key=cv2.contourArea)
         # Calculate the bounding box of the contour
@@ -98,7 +114,7 @@ def locate_static_obstacles(frame, d):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     # Define the lower and upper bounds for the black color in HSV
     lower_black = np.array([0, 0, 0])
-    upper_black = np.array([180, 255, 100])
+    upper_black = np.array([180, 255, 50])
     # hsv = cv2.GaussianBlur(hsv, (15, 15), 0)
     # Threshold the image to get only black colors
     mask = cv2.inRange(hsv, lower_black, upper_black)
@@ -122,7 +138,6 @@ def locate_static_obstacles(frame, d):
             y -= d
             w += 2*d
             h += 2*d
-            print(w,h)
             # Calculate the center of the bounding rectangle
             center_x = x + w // 2
             center_y = y + h // 2
