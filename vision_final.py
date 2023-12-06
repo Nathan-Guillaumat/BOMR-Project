@@ -48,6 +48,7 @@ def locate_thymio(frame):
 
     # Check if any contours are found
     if contours:
+    # if len(contours)>=2:
         # Sort contours by area
         sorted_contours = sorted(contours, key=cv2.contourArea, reverse=True)
 
