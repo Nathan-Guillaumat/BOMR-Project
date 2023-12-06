@@ -64,11 +64,6 @@ def locate_thymio(frame):
         dx = front_center[0][0] - back_center[0][0]
         dy = front_center[0][1] - back_center[0][1]  
         orientation = np.arctan2(dy, dx)
-        # print(front_center[0][0],back_center[0][0])
-        # print(front_center[0][1],back_center[0][1])
-        # print(dx, dy)
-
-
         return back_center, front_center, orientation, sorted_contours
     else:
         return [0,0], 0
