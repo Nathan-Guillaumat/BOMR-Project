@@ -247,9 +247,9 @@ def intersect(edge, obstacle):
         return True
     if (o2 == 0) and on_segment(edge.p1, obstacle.p2, edge.p2):
         return True
-    if (o3 == 0) and on_segment(obstacle.p1, obstacle.p2, edge.p1):
+    if (o3 == 0) and on_segment(obstacle.p1, edge.p1, obstacle.p2):
         return True
-    if (o4 == 0) and on_segment(obstacle.p1, obstacle.p2, edge.p2):
+    if (o4 == 0) and on_segment(obstacle.p1, edge.p2, obstacle.p2):
         return True
     
     return False
