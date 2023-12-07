@@ -257,20 +257,45 @@ def intersect(edge, obstacle):
 """
     Code below is inspired by the pyvisgraph library
 """
+
+def point_in_polygon(p1, polygon):
+    
+    """ Checks if a point is inside a polygon
+    
+        Checks if the number of intersections of a half-line from p1 to (-inf, p1.y) and the polygon,
+        if it's an odd number of intersections the point is inside the polygon
+
+    Args:
+        p1 (Point): The point 
+        polygon ([Edge]): The polygon
+
+    Returns:
+        bool: Point is in polygon
+        
+    """
+    p2 = Point(float('inf'), p1.y)
+    line = Edge(p1, p2)
+    count = 0   
+    for edge in polygon:
+        if intersect(line, edge):
+            if orientation(edge.p1, edge.p2, p1):
+                return on_segment(edge.p1, p1, edge.p2)            
+            count += 1
+        if count % 2 == 1:
+            return True
+    return False
+
 def edge_in_polygon(p1, p2, graph):
 
     """ Determines whether an edge is inside a polygon
-
-        For this we assume that the obstacles are convex, hence if the edges are part of the same polygon,
-        the same obstacle and they don't share a point, that means that the edge is going to be in the polygon
-
-        Args:
-            p1 (Point): The first point of the edge
-            p2 (Point): The second point of the edge
-            graph (Graph): The graph we are searching
         
-        Return:
-            bool: edge is in the polygon
+    Args:
+        p1 (Point): The first point of the edge
+        p2 (Point): The second point of the edge
+        graph (Graph): The graph we are searching
+        
+    Return:
+        bool: edge is in the polygon
 
     """
     
@@ -279,7 +304,9 @@ def edge_in_polygon(p1, p2, graph):
     if p1.polygon_id == -1 or p2.polygon_id == -1: # it's the starting point or the goal point 
         return False
 
-    return True
+    mid_point = Point((p1.x + p2.x)/2, (p1.y+p2.y)/2)
+    return point_in_polygon(mid_point, graph.get_polygons()[p1.polygon_id])
+
 
 def visible_vertices(point, graph, start = None, goal = None):
     
@@ -288,9 +315,11 @@ def visible_vertices(point, graph, start = None, goal = None):
     Args:
         point (Point): the point whose visibile vertices we are looking for
         graph (Graph): the graph that captures the free space of the world map
-        start (Point): in case there is a navigation problem defined from the start, if not vertices visible from the start
+        start (Point): optional parameter
+                        in case there is a navigation problem defined from the start, if not vertices visible from the start
                         and the goal will be added afterwards, additionally it is known that if a point p1 sees point p2, point p2 sees point p1
-        goal (Point):  similar as for the start
+        goal (Point):  optional parameter
+                        similar as for the start
 
     Returns:
         list: of all vertices, points, in the graph, or the union of the graph and start and/or goal point, visible from the point point
@@ -332,73 +361,187 @@ def visible_vertices(point, graph, start = None, goal = None):
             continue
         # check if the visible edge is interior to its polygon
         if other_point not in graph.get_adjacent_points(point):
+            """
+                checking if the visible edge is interior to its polygon
+            """
             if edge_in_polygon(point, other_point, graph):
                 continue
+            
         visible.append(other_point)
     return visible
 
-#naive visibility graph
 def build_graph(graph, start = None, goal = None):
-    obstacles = []
-    for polygons in graph.get_polygons().values():
-        obstacles += polygons
+    """ Builds the graph based on the polygons from the global map
+
+        Naive implementation - it loops over all of the vertices and checks whether any of 
+        the remaining edges are visible
+        
+        - note that because of how function add_edges in class Graph works it will actually add edge from point p1 to point p2, 
+        and point p2 to point p1 at the same time, when it is checking p1
+        
+        Args:
+            graph (Graph): the graph which will be built, at this point only consisting of the polygons and their edges,
+                            also the variable in which the result will be stored in
+            start (Point): optional parameter 
+                            in case there is a navigation problem defined from the start, if not vertices visible from the start and 
+                            the goal will be added afterwards, additionally it is known that if a point p1 sees point p2, point p2 sees point p1
+            goal (Point):  optional parameter
+                            similar to the start 
+    
+    """
+    
     points = graph.get_points()
     if start:
         points.append(start)
     if goal:
         points.append(goal)
+        
     for point in points:
-        visible = visible_vertices(point, graph, start, goal)
+        """
+            finding all the vertices visible from point and adding the visible edges to the graph
+        """
+        visible = visible_vertices(point, graph, start, goal) 
         for p in visible:
             graph.add_edge(Edge(point, p))
+            
     return graph
 
 """
     Astar algorithm implementation
 """
 def distanceBetweenPoints(p1, p2):
+    """ Calculates the Eucledian distance between points
+
+    Args:
+        p1 (Point): The first point
+        p2 (Point): The second point
+
+    Returns:
+        float: eucledian distance between points p1 and p2
+    """
     return math.sqrt((p2.x - p1.x)**2 + (p2.y - p1.y)**2)
+
 def heuristic(point, goal):
+    """ Heuristic function
+    
+    Heuristic function, distance from 
+
+    Args:
+        point (Point): The point
+        goal (Point): The goal
+
+    Returns:
+        double: distance between the point and the goal
+        
+    """
     return distanceBetweenPoints(point, goal)
 
-def Astar(graph, start, goal):
-    #check if start and goal are valid points !!
+def Astar(graph, start, goal, frame_size):
+    """ A* algorithm
+
+    Args:
+        graph (Graph): Graph that captures the conectivity of the free space in the global map
+        start (Point): The starting point
+        goal (Point): The goal point
+        frame_size (2D array): Size of the frame
+
+    Returns:
+        list, list: list of nodes of the plan in reverse order, list of all explored nodes
+    """
+    # checking if start and goal are valid points 
+    for polygon in graph.get_polygons().values():
+        if point_in_polygon(start, polygon) or point_in_polygon(goal, polygon):
+            return [], []
+
     start_exists = start in graph
     goal_exists = goal in graph
     add_to_graph = Graph([])
+    
+    # polygon for the playground
+    p1 = Point(0,0)
+    p2 = Point(frame_size[0],0)
+    p3 = Point(frame_size[0],frame_size[1])
+    p4 = Point(0, frame_size[1])
+    frame = [Edge(p1,p2), Edge(p2,p3), Edge(p3,p4), Edge(p4,p1)]
+    
+    # checking conectivity of the start and goal with the vertices of the graph
     if not start_exists:
-        for v in visible_vertices(start, graph):
+        for v in visible_vertices(start, graph, goal=goal):
             add_to_graph.add_edge(Edge(start, v))
     if not goal_exists:
         for v in visible_vertices(goal, graph):
             add_to_graph.add_edge(Edge(goal, v))
+
     points = graph.get_points()
-    opened = [(heuristic(start,goal),start)]
-    heapq.heapify(opened)
-    closed = []
-    cameFrom = dict()
-    h = dict()
-    costs = dict(zip(points, [np.inf for x in range(len(points))]))
+    opened = [(heuristic(start,goal),start)] # storing a node as cost of path and the node itself, to accomodate for the use of heapify
+    heapq.heapify(opened) # storing all of the opened nodes in a heap, to access the best node faster and easier
+    closed = [] # all of the nodes that have been explored so far
+    cameFrom = dict() # key = node, value = parent node
+    costs = dict(zip(points, [np.inf for x in range(len(points))])) # key = node, value = cost from the start to node
     costs[start] = 0
-    cameFrom = dict()
-    nodes = []
+
+    nodes = [] # plan initialized
     while len(opened) != 0:
-        currentEstimate, current = heapq.heappop(opened)
-        closed.append(current)
-        if current == goal:
+        currentEstimate, current = heapq.heappop(opened) # get the best node, smallest cost value
+        closed.append(current) 
+        if current == goal: 
+            """
+                if the current node is the goal the path has been found and it needs to be extracted using the cameFrom,
+                which captures the parent-child relationships that the algorithm creates
+            """
             while current != start:
                 nodes.append(current)
                 temp = cameFrom[current]
                 current = temp
             nodes.append(current)
+            
             return nodes, closed
-        for neighbour in (graph.get_adjacent_points(current) + add_to_graph.get_adjacent_points(current)):
-            cost = costs[current] + distanceBetweenPoints(current, neighbour)
-            if neighbour in costs:
+        
+        for neighbour in (graph.get_adjacent_points(current) + add_to_graph.get_adjacent_points(current)): # checks all the neighbouring points
+            if not point_in_polygon(neighbour, frame): # if point not in frame don't take it into consideration
+                continue
+            cost = costs[current] + heuristic(current, neighbour)
+            if neighbour in costs: 
+                """
+                    if there was a path to the neighbouring point, no matter if was or wasn't visited, 
+                    if the cost to go through the current node is smaller than the existing the neighbour should be visited again
+                """
                 if cost >= costs[neighbour]:
                     continue
+            # adding the node and updating the parent-child dictionary and costs
             opened.append((cost + heuristic(neighbour, goal), neighbour))
             cameFrom[neighbour] = current
             costs[neighbour] = cost           
     print("No path found to goal")
     return nodes, closed
+
+def global_navigation(polys, start, goal, frame_dimensions):
+    """ Global navigation function
+    
+        Creates the global map and finds the optimal path
+
+    Args:
+        polys ([[Points]]]): The obstacles
+        start (Point): The start point
+        goal (Point): The goal point
+        frame_dimensions (2D array): dimensions of the frame
+
+    Returns:
+        list: of positions
+    """
+
+    graph = Graph(polys)
+    build_graph(graph)
+    
+    nodes, closed = Astar(graph, start, goal, frame_dimensions)
+    
+    #for node in nodes:
+    nodes = nodes[::-1]
+    coordinates = np.array(nodes)
+    
+    points = np.zeros((len(coordinates),2))
+    
+    for i in range(len(coordinates)):
+        points[i]= [coordinates[i].x,coordinates[i].y]
+        
+    return points
