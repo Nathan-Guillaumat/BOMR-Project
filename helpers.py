@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 
-from vision_final import *
+from vision import *
 
 import cv2
 import time
@@ -59,35 +59,3 @@ def motors(left, right):
         "motor.left.target": [left],
         "motor.right.target": [right],
     }
-
-async def drive_for_seconds(client, seconds):
-    # Set the motor speeds
-    v = {
-        "motor.left.target": [int(99)],
-        "motor.right.target": [int(100)],
-    }
-    await node.set_variables(v)
-    await asyncio.sleep(seconds)
-
-
-async def turn_for_seconds(client, seconds,right):
-    # Set the motor speeds
-    if seconds != 0:
-        if right==1:
-            v = {
-                "motor.left.target": [int(100)],
-                "motor.right.target": [int(-100)],
-            }
-        else:
-            v = {
-                "motor.left.target": [int(-100)],
-                "motor.right.target": [int(100)],
-            }
-        await node.set_variables(v)
-    await asyncio.sleep(abs(seconds))
-
-def camera_acquisition():
-    global frame, image_ready
-
-    ret, frame = cap.read()
-    image_ready = True
