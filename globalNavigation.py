@@ -239,7 +239,6 @@ def intersect(edge, obstacle):
     o2 = orientation(edge.p1, edge.p2, obstacle.p2)
     o3 = orientation(obstacle.p1, obstacle.p2, edge.p1)
     o4 = orientation(obstacle.p1, obstacle.p2, edge.p2)
-
     #general case 
     if (o1 != o2) and (o3 != o4):
         return True
@@ -262,7 +261,7 @@ def point_in_polygon(p1, polygon):
     
     """ Checks if a point is inside a polygon
     
-        Checks the if the number of intersections of a half-line from p1 to (-inf, p1.y) and the polygon,
+        Checks if the number of intersections of a half-line from p1 to (-inf, p1.y) and the polygon,
         if it's an odd number of intersections the point is inside the polygon
 
     Args:
@@ -273,16 +272,20 @@ def point_in_polygon(p1, polygon):
         bool: Point is in polygon
         
     """
-    p2 = Point(float('inf'), p1.y)
+    p2 = Point(100000, p1.y)
     line = Edge(p1, p2)
     count = 0   
     for edge in polygon:
+        if edge.p1 == p1 or edge.p2 == p1:
+            return False
+        
         if intersect(line, edge):
-            if orientation(edge.p1, edge.p2, p1):
-                return on_segment(edge.p1, p1, edge.p2)            
+            if orientation(edge.p1, edge.p2, p1) == 0:
+                return on_segment(edge.p1, p1, edge.p2)  
             count += 1
-        if count % 2 == 1:
-            return True
+            
+    if count % 2 == 1:
+        return True
     return False
 
 def edge_in_polygon(p1, p2, graph):
@@ -337,7 +340,20 @@ def visible_vertices(point, graph, start = None, goal = None):
         points.append(goal)
         
     visible = []
+    
+    for polygon in graph.get_polygons().values(): # checking for narrow spaces between obstacles, show up as vertices of obstacles inside polygons of other obstacles
+        if point_in_polygon(point, polygon):
+            return []
+                
     for other_point in points: # looping over the other n-1 vertcies, assuming that n is the total number of vertices
+        in_poligon = False
+        for polygon in graph.get_polygons().values(): # checking for narrow spaces between obstacles, show up as vertices of obstacles inside polygons of other obstacles
+            if point_in_polygon(other_point, polygon):
+                in_poligon = True
+                break
+        if in_poligon:
+            continue
+                
         if point == other_point: 
             continue
         edge = Edge(point, other_point) 
@@ -436,25 +452,34 @@ def heuristic(point, goal):
     """
     return distanceBetweenPoints(point, goal)
 
-def Astar(graph, start, goal):
+def Astar(graph, start, goal, frame_size):
     """ A* algorithm
 
     Args:
         graph (Graph): Graph that captures the conectivity of the free space in the global map
         start (Point): The starting point
         goal (Point): The goal point
+        frame_size (2D array): Size of the frame
 
     Returns:
         list, list: list of nodes of the plan in reverse order, list of all explored nodes
     """
+    
     # checking if start and goal are valid points 
     for polygon in graph.get_polygons().values():
         if point_in_polygon(start, polygon) or point_in_polygon(goal, polygon):
             return [], []
-
+    
     start_exists = start in graph
     goal_exists = goal in graph
     add_to_graph = Graph([])
+    
+    # polygon for the playground
+    p1 = Point(0,0)
+    p2 = Point(frame_size[0],0)
+    p3 = Point(frame_size[0],frame_size[1])
+    p4 = Point(0, frame_size[1])
+    frame = Graph([[p1, p2, p3, p4]])
     
     # checking conectivity of the start and goal with the vertices of the graph
     if not start_exists:
@@ -473,6 +498,7 @@ def Astar(graph, start, goal):
     costs[start] = 0
 
     nodes = [] # plan initialized
+    
     while len(opened) != 0:
         currentEstimate, current = heapq.heappop(opened) # get the best node, smallest cost value
         closed.append(current) 
@@ -490,6 +516,8 @@ def Astar(graph, start, goal):
             return nodes, closed
         
         for neighbour in (graph.get_adjacent_points(current) + add_to_graph.get_adjacent_points(current)): # checks all the neighbouring points
+            if not point_in_polygon(neighbour, frame.get_polygons()[0]): # if point not in frame don't take it into consideration
+                continue
             cost = costs[current] + heuristic(current, neighbour)
             if neighbour in costs: 
                 """
@@ -505,12 +533,25 @@ def Astar(graph, start, goal):
     print("No path found to goal")
     return nodes, closed
 
-def global_navigation(polys, start, goal):
+def global_navigation(polys, start, goal, frame_dimensions):
+    """ Global navigation function
+    
+        Creates the global map and finds the optimal path
+
+    Args:
+        polys ([[Points]]]): The obstacles
+        start (Point): The start point
+        goal (Point): The goal point
+        frame_dimensions (2D array): dimensions of the frame
+
+    Returns:
+        list: of positions
+    """
 
     graph = Graph(polys)
     build_graph(graph)
     
-    nodes, closed = Astar(graph, start, goal)
+    nodes, closed = Astar(graph, start, goal, frame_dimensions)
     
     #for node in nodes:
     nodes = nodes[::-1]
