@@ -458,7 +458,7 @@ def Astar(graph, start, goal):
     
     # checking conectivity of the start and goal with the vertices of the graph
     if not start_exists:
-        for v in visible_vertices(start, graph):
+        for v in visible_vertices(start, graph, goal=goal):
             add_to_graph.add_edge(Edge(start, v))
     if not goal_exists:
         for v in visible_vertices(goal, graph):
