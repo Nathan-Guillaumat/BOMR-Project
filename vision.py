@@ -3,7 +3,14 @@ import cv2
 import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
 
+
 def locate_goal(frame):
+    '''   
+    locate goal
+    
+    args: frame
+    return: center coordinates of goal
+    '''
     # Convert the frame from BGR to HSV color space
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     # Define the lower and upper bounds for the green color in HSV
@@ -26,7 +33,13 @@ def locate_goal(frame):
         return None
 
 def locate_thymio(frame):
-
+    '''   
+    locate thymio robot
+    
+    args: frame
+    return: center coordinates of back-dot, of front-dot, orientation in rad
+    '''
+    
     # Convert the frame from BGR to HSV color space
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
@@ -48,7 +61,6 @@ def locate_thymio(frame):
 
     # Check if any contours are found
     if contours:
-    # if len(contours)>=2:
         # Sort contours by area
         sorted_contours = sorted(contours, key=cv2.contourArea, reverse=True)
 
@@ -64,42 +76,18 @@ def locate_thymio(frame):
         dx = front_center[0][0] - back_center[0][0]
         dy = front_center[0][1] - back_center[0][1]  
         orientation = np.arctan2(dy, dx)
-        # print(front_center[0][0],back_center[0][0])
-        # print(front_center[0][1],back_center[0][1])
-        # print(dx, dy)
 
-
-        return back_center, front_center, orientation, sorted_contours
+        return back_center, front_center, orientation
     else:
         return [0,0], 0
 
-
-def locate_table_origin(frame):
-    # Convert the frame from BGR to HSV color space
-    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-    # Define the lower and upper bounds for the white color in HSV
-    lower_white = np.array([0, 0, 0])
-    upper_white = np.array([180, 40, 255])  
-    hsv = cv2.GaussianBlur(hsv, (15, 15), 100)
-    # Threshold the image to get only blue colors
-    mask = cv2.inRange(hsv, lower_white, upper_white)
-    # Find contours in the binary image
-    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    # Check if any contours are found
-    if contours:
-        # Find the contour with the maximum area (largest white object)
-        max_contour = max(contours, key=cv2.contourArea)
-        # Calculate the bounding box of the contour
-        x, y, w, h = cv2.boundingRect(max_contour)
-        cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
-        # The upper-left corner of the bounding box is the origin of the coordinate system
-        origin_x = x
-        origin_y = y
-        return origin_x, origin_y
-    else:
-        return None
-
 def filter_contours(contours, n_clusters=2):
+    '''   
+    K-means to help locate_static_obstacles find the right objects
+    
+    args: frame, n_clusters=2 (constant)
+    return: list of the largest contours (by area) between the n=2 clusters
+    '''
     # Calculate the areas of the contours
     areas = np.array([cv2.contourArea(contour) for contour in contours]).reshape(-1, 1)
     # Apply K-means clustering to the areas
@@ -111,12 +99,17 @@ def filter_contours(contours, n_clusters=2):
     return large_contours
 
 def locate_static_obstacles(frame, d):
+    '''   
+    locate static obstacles
+    
+    args: frame, distance to enlarge obstacles
+    return: nested list of obstacle corners (given in clockwise order)
+    '''
     # Convert the frame from BGR to HSV color space
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     # Define the lower and upper bounds for the black color in HSV
     lower_black = np.array([0, 0, 0])
     upper_black = np.array([180, 255, 50])
-    # hsv = cv2.GaussianBlur(hsv, (15, 15), 0)
     # Threshold the image to get only black colors
     mask = cv2.inRange(hsv, lower_black, upper_black)
     # Threshold the image to get only blue colors
@@ -127,7 +120,7 @@ def locate_static_obstacles(frame, d):
     obstacle_contours = []
     # Find contours in the binary image
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    contours = filter_contours(contours)
+    contours = filter_contours(contours) # k-means
     # check if any contours are found
     if contours:
         # Iterate over the contours
@@ -144,7 +137,7 @@ def locate_static_obstacles(frame, d):
             center_y = y + h // 2
             # Add the center, corners, and contour to the respective lists
             obstacle_centers.append((center_x, center_y))
-            obstacle_corners.append([(x, y), (x + w, y), (x + w, y + h), (x, y + h),])
+            obstacle_corners.append([(x, y), (x + w, y), (x + w, y + h), (x, y + h)]) # always clockwise
             obstacle_contours.append(contour)
 
     return obstacle_corners
