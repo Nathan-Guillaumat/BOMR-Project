@@ -112,8 +112,7 @@ def locate_static_obstacles(frame, d):
     upper_black = np.array([180, 255, 50])
     # Threshold the image to get only black colors
     mask = cv2.inRange(hsv, lower_black, upper_black)
-    # Threshold the image to get only blue colors
-    mask = cv2.inRange(hsv, lower_black, upper_black)
+
     # Initialize lists to store the centers, corners, and contours of the obstacles
     obstacle_centers = []
     obstacle_corners = []
