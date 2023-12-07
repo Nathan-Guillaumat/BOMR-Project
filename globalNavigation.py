@@ -340,13 +340,14 @@ def visible_vertices(point, graph, start = None, goal = None):
         points.append(goal)
         
     visible = []
-    for polygon in graph.get_polygons().values():
+    
+    for polygon in graph.get_polygons().values(): # checking for narrow spaces between obstacles, show up as vertices of obstacles inside polygons of other obstacles
         if point_in_polygon(point, polygon):
             return []
                 
     for other_point in points: # looping over the other n-1 vertcies, assuming that n is the total number of vertices
         in_poligon = False
-        for polygon in graph.get_polygons().values():
+        for polygon in graph.get_polygons().values(): # checking for narrow spaces between obstacles, show up as vertices of obstacles inside polygons of other obstacles
             if point_in_polygon(other_point, polygon):
                 in_poligon = True
                 break
