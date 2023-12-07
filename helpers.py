@@ -20,6 +20,12 @@ from tqdm import tqdm
 import asyncio
 
 def angle_to_rotate(pos_i, pos_f, theta_i):
+    '''
+    angle to turn between two points with an initial orientation
+    
+    args: initial_position, final_position, initial_orientation
+    return: angle to rotate in degree
+    '''
     a = pos_f-pos_i
     theta_f = np.arctan2(a[1], a[0])
     r_theta = (theta_f*180)/np.pi-theta_i
@@ -30,10 +36,21 @@ def angle_to_rotate(pos_i, pos_f, theta_i):
     return r_theta
 
 def distance_to_cover(pos_i, pos_f):
+    '''
+    distance between two points
+
+    args: initial position
+    out: final position
+    '''
     distance = np.linalg.norm(pos_f-pos_i)
     return distance
 
 class RepeatedTimer(object):
+    '''
+    class to set a repeated thred timer
+
+    args: object to repeat
+    '''
     def __init__(self, interval, function, *args, **kwargs):
         self._timer     = None
         self.interval   = interval
@@ -59,6 +76,12 @@ class RepeatedTimer(object):
         self.is_running = False
 
 def motors(left, right):
+    '''
+    function to set the motors
+
+    args: motor speed for the right, motor speed for the left 
+    out: motors speeds to set the Thymio
+    '''
     return {
         "motor.left.target": [left],
         "motor.right.target": [right],
