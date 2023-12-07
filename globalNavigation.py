@@ -504,3 +504,21 @@ def Astar(graph, start, goal):
             costs[neighbour] = cost           
     print("No path found to goal")
     return nodes, closed
+
+def global_navigation(polys, start, goal):
+
+    graph = Graph(polys)
+    build_graph(graph)
+    
+    nodes, closed = Astar(graph, start, goal)
+    
+    #for node in nodes:
+    nodes = nodes[::-1]
+    coordinates = np.array(nodes)
+    
+    points = np.zeros((len(coordinates),2))
+    
+    for i in range(len(coordinates)):
+        points[i]= [coordinates[i].x,coordinates[i].y]
+        
+    return points
