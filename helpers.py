@@ -23,6 +23,10 @@ def angle_to_rotate(pos_i, pos_f, theta_i):
     a = pos_f-pos_i
     theta_f = np.arctan2(a[1], a[0])
     r_theta = (theta_f*180)/np.pi-theta_i
+    if r_theta > 180:
+        r_theta -= 360
+    elif r_theta < -180:
+        r_theta += 360
     return r_theta
 
 def distance_to_cover(pos_i, pos_f):
@@ -59,35 +63,3 @@ def motors(left, right):
         "motor.left.target": [left],
         "motor.right.target": [right],
     }
-
-async def drive_for_seconds(client, seconds):
-    # Set the motor speeds
-    v = {
-        "motor.left.target": [int(99)],
-        "motor.right.target": [int(100)],
-    }
-    await node.set_variables(v)
-    await asyncio.sleep(seconds)
-
-
-async def turn_for_seconds(client, seconds,right):
-    # Set the motor speeds
-    if seconds != 0:
-        if right==1:
-            v = {
-                "motor.left.target": [int(100)],
-                "motor.right.target": [int(-100)],
-            }
-        else:
-            v = {
-                "motor.left.target": [int(-100)],
-                "motor.right.target": [int(100)],
-            }
-        await node.set_variables(v)
-    await asyncio.sleep(abs(seconds))
-
-def camera_acquisition():
-    global frame, image_ready
-
-    ret, frame = cap.read()
-    image_ready = True
