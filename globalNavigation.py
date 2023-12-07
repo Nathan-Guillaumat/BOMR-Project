@@ -498,7 +498,6 @@ def Astar(graph, start, goal, frame_size):
 
     nodes = [] # plan initialized
     
-    print("A*")
     while len(opened) != 0:
         currentEstimate, current = heapq.heappop(opened) # get the best node, smallest cost value
         closed.append(current) 
@@ -516,13 +515,8 @@ def Astar(graph, start, goal, frame_size):
             return nodes, closed
         
         for neighbour in (graph.get_adjacent_points(current) + add_to_graph.get_adjacent_points(current)): # checks all the neighbouring points
-            """if not point_in_polygon(neighbour, frame.get_polygons()[0]): # if point not in frame don't take it into consideration
-                print("current", current)
-                print("neighbour ", neighbour)
-                print(point_in_polygon(neighbour, frame.get_polygons()[0]))
-                print("skipped")
-                #return [],[]
-                continue"""
+            if not point_in_polygon(neighbour, frame.get_polygons()[0]): # if point not in frame don't take it into consideration
+                continue
             cost = costs[current] + heuristic(current, neighbour)
             if neighbour in costs: 
                 """
