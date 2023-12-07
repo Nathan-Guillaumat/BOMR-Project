@@ -23,7 +23,6 @@ def angle_to_rotate(pos_i, pos_f, theta_i):
     a = pos_f-pos_i
     theta_f = np.arctan2(a[1], a[0])
     r_theta = (theta_f*180)/np.pi-theta_i
-    print("theta-i: ", theta_i)
     if r_theta > 180:
         r_theta -= 360
     elif r_theta < -180:
